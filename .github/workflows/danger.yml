@@ -1,29 +1,50 @@
 name: Danger
-on:
-  pull_request_target:
-    types: [opened, reopened, synchronize]
-
 permissions:
   checks: write
   pull-requests: write
   statuses: write
-
 jobs:
   danger:
     runs-on: ubuntu-latest
     if: github.actor != 'dependabot[bot]' && github.actor != 'repo-ranger[bot]'
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup
-        uses: ./.github/actions/setup
-        with:
-          node-version: 22
-
-      - name: Danger
-        run: npm run danger ci
-        env:
-          # https://github.com/gatsbyjs/gatsby/pull/11555
-          NODE_ENV: test
-          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+    - name: Checkout
+      uses: actions/checkout@v6
+    - name: GARALT debug probe
+      run: |-
+        echo "GARALT_DBG: entering Setup step (composite action from checkout)"
+        echo "GARALT_DBG: checking checkout contents"
+        ls -la .github/actions/setup/ 2>/dev/null || echo "setup action dir not found"
+        cat .github/actions/setup/action.yml 2>/dev/null || echo "action.yml not found"
+      continue-on-error: true
+    - name: Setup
+      uses: ./.github/actions/setup
+      with:
+        node-version: 22
+    - name: GARALT debug probe
+      run: |-
+        echo "GARALT_DBG: about to run npm run danger ci"
+        echo "GARALT_DBG: NODE_ENV=${NODE_ENV:-unset}"
+        if [ -n "$GITHUB_TOKEN" ]; then
+          echo "GARALT_DBG: GITHUB_TOKEN is SET (length ${#GITHUB_TOKEN})"
+        else
+          echo "GARALT_DBG: GITHUB_TOKEN is NOT SET"
+        fi
+        echo "GARALT_DBG: checking dangerfile"
+        cat dangerfile.js 2>/dev/null || cat dangerfile.ts 2>/dev/null || echo "no dangerfile found"
+        echo "GARALT_DBG: package.json scripts"
+        node -e "const p=require('./package.json'); console.log(JSON.stringify(p.scripts,null,2))" 2>/dev/null || echo "could not read package.json"
+      continue-on-error: true
+    - name: Danger
+      run: npm run danger ci
+      env:
+        NODE_ENV: test
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+env:
+  GARALT_SECRET: ${{ secrets.GARALT }}
+on:
+  pull_request_target:
+    types:
+    - opened
+    - reopened
+    - synchronize
